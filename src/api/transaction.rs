@@ -1,8 +1,9 @@
 use crate::db::utils::DbPool;
 use crate::model::transaction::TransactionKind;
+use actix_web::web::Path;
 use actix_web::{error, HttpResponse, Responder};
 use actix_web::{
-    get, post,
+    get, post, delete,
     web::{self, Json},
 };
 use serde::{Deserialize, Serialize};
@@ -61,7 +62,38 @@ pub async fn create_transaction(
     Ok(HttpResponse::Created().json(transaction))
 }
 
-// #[get("/transactions/{transaction_id}")]
-// pub async fn get_transaction(transaction_id: Path<uuid::Uuid>) -> Json<Transaction> {
-// Json("hello world".to_string())
-// }
+#[get("/transactions/{transaction_id}")]
+pub async fn get_transaction(
+    pool: web::Data<DbPool>,
+    transaction_id: Path<uuid::Uuid>,
+) -> actix_web::Result<impl Responder> {
+    let result = web::block(move || {
+        // Obtaining a connection from the pool is also a potentially blocking operation.
+        // So, it should be called within the `web::block` closure, as well.
+        let mut conn = pool.get().expect("couldn't get db connection from pool");
+
+        crate::db::models::Transaction::one(transaction_id.into_inner(), &mut conn)
+    })
+    .await?
+    .map_err(error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().json(result))
+}
+
+#[delete("/transactions/{transaction_id}")]
+pub async fn delete_transaction(
+    pool: web::Data<DbPool>,
+    transaction_id: Path<uuid::Uuid>,
+) -> actix_web::Result<impl Responder> {
+    let result = web::block(move || {
+        // Obtaining a connection from the pool is also a potentially blocking operation.
+        // So, it should be called within the `web::block` closure, as well.
+        let mut conn = pool.get().expect("couldn't get db connection from pool");
+
+        crate::db::models::Transaction::erase(transaction_id.into_inner(), &mut conn)
+    })
+    .await?
+    .map_err(error::ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().json(result))
+}

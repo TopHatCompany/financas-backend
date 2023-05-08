@@ -4,9 +4,12 @@ mod model;
 
 use actix_web::{middleware, web::Data, App, HttpServer};
 use dotenvy::dotenv;
+use log::info;
 use std::env;
 
 use crate::api::transaction::create_transaction;
+use crate::api::transaction::delete_transaction;
+use crate::api::transaction::get_transaction;
 use crate::api::transaction::get_transactions;
 use crate::db::utils::get_pool;
 
@@ -21,15 +24,17 @@ async fn main() -> std::io::Result<()> {
     std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
 
-    println!("Hello, world!");
+    info!("Hello, world!");
 
     HttpServer::new(move || {
         let logger = middleware::Logger::default();
         App::new()
             .app_data(Data::new(pool.clone()))
-            .wrap(middleware::NormalizePath::default())
+            .wrap(middleware::NormalizePath::trim())
             .wrap(logger)
             .service(get_transactions)
+            .service(get_transaction)
+            .service(delete_transaction)
             .service(create_transaction)
     })
     .bind(("0.0.0.0", 8000))?

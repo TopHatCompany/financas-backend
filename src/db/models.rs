@@ -30,6 +30,24 @@ impl Transaction {
         let result: Result<Vec<Transaction>, diesel::result::Error> = transactions.load(conn);
         result
     }
+
+    pub(crate) fn one(
+        id_to_find: Uuid,
+        conn: &mut PgConnection,
+    ) -> diesel::QueryResult<Transaction> {
+        use crate::db::schema::transactions::dsl::*;
+        // normal diesel operation
+        let result: Result<Transaction, diesel::result::Error> =
+            transactions.find(id_to_find).first(conn);
+
+        result
+    }
+
+    pub(crate) fn erase(id_to_erase: Uuid, conn: &mut PgConnection) -> diesel::QueryResult<usize> {
+        use crate::db::schema::transactions::dsl::*;
+        // normal diesel operation
+        diesel::delete(transactions.filter(id.eq(id_to_erase))).execute(conn)
+    }
 }
 
 #[derive(Insertable)]
@@ -43,7 +61,6 @@ pub struct NewTransaction {
 }
 
 impl NewTransaction {
-
     pub(crate) fn create(self, conn: &mut PgConnection) -> diesel::QueryResult<Transaction> {
         use crate::db::schema::transactions::dsl::*;
         // normal diesel operations
@@ -52,5 +69,4 @@ impl NewTransaction {
             .get_result::<Transaction>(conn);
         result
     }
-
 }
