@@ -16,9 +16,12 @@ pub struct Transaction {
     pub id: Uuid,
     pub transacted_date: NaiveDate,
     pub amount: BigDecimal,
+    pub currency: String,
+    pub account: String,
     pub description: String,
     pub label: String,
     pub kind: String,
+    pub opts: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
 }
@@ -37,8 +40,7 @@ impl Transaction {
     ) -> diesel::QueryResult<Transaction> {
         use crate::db::schema::transactions::dsl::*;
         // normal diesel operation
-        let result: Result<Transaction, diesel::result::Error> =
-            transactions.find(id_to_find).first(conn);
+        let result = transactions.find(id_to_find).first(conn);
 
         result
     }
@@ -55,9 +57,12 @@ impl Transaction {
 pub struct NewTransaction {
     pub transacted_date: NaiveDate,
     pub amount: BigDecimal,
+    pub currency: String,
+    pub account: String,
     pub description: String,
     pub label: String,
     pub kind: String,
+    pub opts: String,
 }
 
 impl NewTransaction {

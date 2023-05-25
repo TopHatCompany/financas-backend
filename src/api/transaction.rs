@@ -1,11 +1,13 @@
+use std::cmp::Reverse;
+
 use crate::db::utils::DbPool;
 use crate::model::transaction::TransactionKind;
 use actix_web::web::Path;
-use actix_web::{error, HttpResponse, Responder};
 use actix_web::{
-    get, post, delete,
+    delete, get, post,
     web::{self, Json},
 };
+use actix_web::{error, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
@@ -17,14 +19,17 @@ pub struct Trasaction {
 pub struct NewTransactionRequest {
     pub transacted_date: chrono::NaiveDate,
     pub amount: bigdecimal::BigDecimal,
+    pub currency: String,
+    pub account: String,
     pub description: String,
     pub label: String,
-    pub kind: TransactionKind,
+    pub kind: String,
+    pub opts: String,
 }
 
 #[get("/transactions")]
 pub async fn get_transactions(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
-    let transactions = web::block(move || {
+    let mut transactions = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
         let mut conn = pool.get().expect("couldn't get db connection from pool");
@@ -33,7 +38,7 @@ pub async fn get_transactions(pool: web::Data<DbPool>) -> actix_web::Result<impl
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
-
+    transactions.sort_by_key(|a| Reverse(a.transacted_date));
     Ok(HttpResponse::Ok().json(transactions))
 }
 
@@ -43,12 +48,16 @@ pub async fn create_transaction(
     request: Json<NewTransactionRequest>,
 ) -> actix_web::Result<impl Responder> {
     let new_transaction = crate::db::models::NewTransaction {
-        transacted_date: request.transacted_date.clone(),
-        amount: request.amount.clone(),
-        description: request.description.clone(),
-        label: request.label.clone(),
-        kind: request.kind.clone().to_string(),
+        transacted_date: request.transacted_date.to_owned(),
+        amount: request.amount.to_owned(),
+        description: request.description.to_owned(),
+        label: request.label.to_owned(),
+        kind: request.kind.to_owned().to_string(),
+        currency: request.currency.to_owned(),
+        account: request.account.to_owned(),
+        opts: request.opts.to_owned(),
     };
+
     let transaction = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
