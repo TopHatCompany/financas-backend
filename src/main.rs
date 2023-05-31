@@ -7,10 +7,7 @@ use dotenvy::dotenv;
 use log::info;
 use std::env;
 
-use crate::api::transaction::create_transaction;
-use crate::api::transaction::delete_transaction;
-use crate::api::transaction::get_transaction;
-use crate::api::transaction::get_transactions;
+use crate::api::transaction::*;
 use crate::db::utils::get_pool;
 
 #[actix_web::main]
@@ -32,6 +29,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(pool.clone()))
             .wrap(middleware::NormalizePath::trim())
             .wrap(logger)
+            .service(get_summary)
             .service(get_transactions)
             .service(get_transaction)
             .service(delete_transaction)
