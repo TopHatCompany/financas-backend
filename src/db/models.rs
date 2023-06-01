@@ -34,6 +34,18 @@ impl Transaction {
         result
     }
 
+    pub(crate) fn month(
+        lower_transacted: NaiveDate,
+        upper_transacted: NaiveDate,
+        conn: &mut PgConnection,
+    ) -> diesel::QueryResult<Vec<Transaction>> {
+        use crate::db::schema::transactions::dsl::*;
+
+        transactions
+            .filter(transacted_date.between(lower_transacted, upper_transacted))
+            .order_by(transacted_date.desc())
+            .load(conn)
+    }
     pub(crate) fn one(
         id_to_find: Uuid,
         conn: &mut PgConnection,

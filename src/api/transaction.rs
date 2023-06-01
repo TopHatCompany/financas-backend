@@ -8,7 +8,9 @@ use actix_web::{
     web::{self, Json},
 };
 use actix_web::{error, HttpResponse, Responder};
+use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Days, Duration, Months};
 use itertools::Itertools;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -60,12 +62,17 @@ pub async fn get_summary(pool: web::Data<DbPool>) -> actix_web::Result<impl Resp
 
 #[get("/transactions")]
 pub async fn get_transactions(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
+    let today: NaiveDateTime = chrono::Local::now().naive_local();
+    let first_day: NaiveDate =
+        NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap();
+    let last_day: NaiveDate =
+        first_day.checked_add_months(Months::new(1)).unwrap().checked_sub_days(Days::new(1)).unwrap();
+    debug!("{} {} {}", today, first_day, last_day);
     let mut transactions = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
         let mut conn = pool.get().expect("couldn't get db connection from pool");
-
-        crate::db::models::Transaction::all(&mut conn)
+        crate::db::models::Transaction::month(first_day, last_day, &mut conn)
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
