@@ -33,10 +33,6 @@ VALUES
 ('BRL','Transferência','aporte',to_date('17/05/2023','DD/MM/YYYY'),-2000,'Nubank','pagamento','Reserva de emergencia'),
 ('BRL','Transferência','saida',to_date('18/05/2023','DD/MM/YYYY'),-497.50,'Nubank','pix','Itau'),
 
-
-
-
-
 ('BRL','Saida','compra',to_date('20/05/2023','DD/MM/YYYY'),-12,'Nubank','porao',''),
 ('BRL','Entrada','transferência',to_date('20/05/2023','DD/MM/YYYY'),17,'Nubank','Isabella','pix'),
 ('BRL','Saida','reembolso',to_date('20/05/2023','DD/MM/YYYY'),-17,'Nubank','Isabella','pix'),
@@ -51,10 +47,9 @@ VALUES
 
 ;
 
+-- ('BRL','Transferência','pagamento',to_date('27/04/2023','DD/MM/YYYY'),-1031.24,'Nubank','fatura','Carrefour card'),
 -- ('BRL','Emily','saida',to_date('24/05/2023','DD/MM/YYYY'),-49.73,'Nubank','pix','')
 -- TODO
--- CARREFOUR CARD
--- ITAU CARD
 -- CAIXINHA CELULAR
 -- RESERVA DE EMERGENCIA
 -- PORQUINHO
