@@ -46,6 +46,7 @@ impl Transaction {
             .order_by(transacted_date.desc())
             .load(conn)
     }
+
     pub(crate) fn one(
         id_to_find: Uuid,
         conn: &mut PgConnection,

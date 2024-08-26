@@ -8,7 +8,7 @@ use actix_web::{
     web::{self, Json},
 };
 use actix_web::{error, HttpResponse, Responder};
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Days, Duration, Months};
+use chrono::{DateTime, Datelike, Days, Duration, Months, NaiveDate, NaiveDateTime};
 use itertools::Itertools;
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
@@ -54,7 +54,7 @@ pub async fn get_summary(pool: web::Data<DbPool>) -> actix_web::Result<impl Resp
     let mut result: HashMap<String, Vec<crate::db::models::Transaction>> = HashMap::new();
 
     transactions.into_iter().for_each(|t| {
-        let group = result.entry(t.account.to_lowercase()).or_insert(vec![]);
+        let group = result.entry(t.account.to_lowercase()).or_default();
         group.push(t);
     });
     Ok(HttpResponse::Ok().json(result))
@@ -63,10 +63,12 @@ pub async fn get_summary(pool: web::Data<DbPool>) -> actix_web::Result<impl Resp
 #[get("/transactions")]
 pub async fn get_transactions(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
     let today: NaiveDateTime = chrono::Local::now().naive_local();
-    let first_day: NaiveDate =
-        NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap();
-    let last_day: NaiveDate =
-        first_day.checked_add_months(Months::new(1)).unwrap().checked_sub_days(Days::new(1)).unwrap();
+    let first_day: NaiveDate = NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap();
+    let last_day: NaiveDate = first_day
+        .checked_add_months(Months::new(1))
+        .unwrap()
+        .checked_sub_days(Days::new(1))
+        .unwrap();
     debug!("{} {} {}", today, first_day, last_day);
     let mut transactions = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
