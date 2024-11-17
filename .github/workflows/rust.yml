@@ -12,10 +12,17 @@ env:
 jobs:
   build:
     runs-on: self-hosted
-    container:
-      image: rust:latest
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: "${{ github.event.pull_request.head.sha }}"
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt
+    - name: Format code
+      run: cargo fmt --all --check
     - name: Build
       run: cargo build --verbose
     - name: Run tests
