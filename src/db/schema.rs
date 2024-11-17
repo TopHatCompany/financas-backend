@@ -35,8 +35,4 @@ diesel::table! {
 
 diesel::joinable!(users_accounts -> users (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    transactions,
-    users,
-    users_accounts,
-);
+diesel::allow_tables_to_appear_in_same_query!(transactions, users, users_accounts,);
