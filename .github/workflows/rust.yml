@@ -11,7 +11,7 @@ env:
 
 jobs:
   build:
-    runs-on: emerson-nixos-ci
+    runs-on: self-runner
 
     steps:
     - uses: actions/checkout@v4
