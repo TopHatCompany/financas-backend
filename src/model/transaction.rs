@@ -1,8 +1,8 @@
 use bigdecimal;
 use chrono::naive;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use strum::{Display, EnumString};
 use uuid;
-use strum::{EnumString, Display};
 
 #[derive(Clone, Deserialize, Serialize, EnumString, Display, Eq, PartialEq)]
 pub enum TransactionKind {

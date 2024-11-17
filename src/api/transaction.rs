@@ -1,16 +1,14 @@
 use std::cmp::Reverse;
 
 use crate::db::utils::DbPool;
-use crate::model::transaction::TransactionKind;
 use actix_web::web::Path;
 use actix_web::{
     delete, get, post,
     web::{self, Json},
 };
 use actix_web::{error, HttpResponse, Responder};
-use chrono::{DateTime, Datelike, Days, Duration, Months, NaiveDate, NaiveDateTime};
-use itertools::Itertools;
-use log::{debug, info};
+use chrono::{Datelike, Days, Months, NaiveDate, NaiveDateTime};
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -60,16 +58,31 @@ pub async fn get_summary(pool: web::Data<DbPool>) -> actix_web::Result<impl Resp
     Ok(HttpResponse::Ok().json(result))
 }
 
+#[derive(Deserialize)]
+struct Info {
+    sort: String,
+}
+
 #[get("/transactions")]
-pub async fn get_transactions(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
+pub async fn get_transactions(
+    info: web::Query<Info>,
+    pool: web::Data<DbPool>,
+) -> actix_web::Result<impl Responder> {
     let today: NaiveDateTime = chrono::Local::now().naive_local();
-    let first_day: NaiveDate = NaiveDate::from_ymd_opt(today.year(), today.month(), 1).unwrap();
+    let first_day: NaiveDate = NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
+        .unwrap()
+        .checked_sub_months(Months::new(20))
+        .unwrap();
     let last_day: NaiveDate = first_day
-        .checked_add_months(Months::new(1))
+        .checked_add_months(Months::new(12))
         .unwrap()
         .checked_sub_days(Days::new(1))
         .unwrap();
-    debug!("{} {} {}", today, first_day, last_day);
+    debug!(
+        "today: {}\t\tfirst_day: {}\t\tlast_day: {}",
+        today, first_day, last_day
+    );
+    debug!("query string info: {}", info.sort);
     let mut transactions = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
@@ -79,7 +92,9 @@ pub async fn get_transactions(pool: web::Data<DbPool>) -> actix_web::Result<impl
     .await?
     .map_err(error::ErrorInternalServerError)?;
     transactions.sort_by_key(|a| Reverse(a.transacted_date));
-    Ok(HttpResponse::Ok().json(transactions))
+    Ok(HttpResponse::Ok()
+        .insert_header(("x-total-count", format!("{}", transactions.len())))
+        .json(transactions))
 }
 
 #[post("/transactions")]
