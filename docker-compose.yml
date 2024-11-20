@@ -18,12 +18,23 @@ services:
     restart: unless-stopped
   pgadmin:
     container_name: pgadmin_container
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:latest
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.pgadmin.rule=Host(`db.emerson.abc.br`)"
+      - traefik.http.routers.pgadmin.service=pgadmin
+      - traefik.http.routers.pgadmin.entrypoints=websecure
+      - traefik.http.routers.pgadmin.tls=true
+      - traefik.http.routers.pgadmin.tls.certresolver=le
+      - traefik.http.services.pgadmin.loadbalancer.server.port=80
     environment:
+      TZ: America/Sao_Paulo
+      PUID: 1000
+      PGID: 1000
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     volumes:
-      - ./.docker/pgadmin:/root/.pgadmin
-    ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      - ./.docker/pgadmin:/var/lib/pgadmin
+    # ports:
+    #   - "${PGADMIN_PORT:-5050}:80"
     restart: unless-stopped
