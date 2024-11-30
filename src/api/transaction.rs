@@ -58,9 +58,11 @@ pub async fn get_summary(pool: web::Data<DbPool>) -> actix_web::Result<impl Resp
     Ok(HttpResponse::Ok().json(result))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct Info {
-    sort: String,
+    sort: Option<String>,
+    filter: Option<String>,
+    range: Option<String>,
 }
 
 #[get("/transactions")]
@@ -68,13 +70,24 @@ pub async fn get_transactions(
     info: web::Query<Info>,
     pool: web::Data<DbPool>,
 ) -> actix_web::Result<impl Responder> {
+    let mut a = 0;
+    let mut b = 10;
+
+    if let Some(range) = &info.range {
+        let trimmed = &range[1..range.len() - 1];
+        let parts: Vec<&str> = trimmed.split(',').collect();
+        a = parts[0].parse().unwrap();
+        b = parts[1].parse().unwrap();
+    }
+
+    // Split by comma and parse
     let today: NaiveDateTime = chrono::Local::now().naive_local();
     let first_day: NaiveDate = NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
         .unwrap()
-        .checked_sub_months(Months::new(20))
+        .checked_sub_months(Months::new(48))
         .unwrap();
     let last_day: NaiveDate = first_day
-        .checked_add_months(Months::new(12))
+        .checked_add_months(Months::new(48))
         .unwrap()
         .checked_sub_days(Days::new(1))
         .unwrap();
@@ -82,18 +95,27 @@ pub async fn get_transactions(
         "today: {}\t\tfirst_day: {}\t\tlast_day: {}",
         today, first_day, last_day
     );
-    debug!("query string info: {}", info.sort);
+    debug!("query string info: {:?} {} {}", info, a, b);
+    let mut conn = pool.get().expect("couldn't get db connection from pool");
+    let qtd = web::block(move || {
+        // Obtaining a connection from the pool is also a potentially blocking operation.
+        // So, it should be called within the `web::block` closure, as well.
+        crate::db::models::Transaction::count(&mut conn)
+    })
+    .await?
+    .map_err(error::ErrorInternalServerError)?;
     let mut transactions = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
         let mut conn = pool.get().expect("couldn't get db connection from pool");
-        crate::db::models::Transaction::month(first_day, last_day, &mut conn)
+        crate::db::models::Transaction::month(first_day, last_day, (a, b), &mut conn)
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
     transactions.sort_by_key(|a| Reverse(a.transacted_date));
     Ok(HttpResponse::Ok()
-        .insert_header(("x-total-count", format!("{}", transactions.len())))
+        .insert_header(("Access-Control-Expose-Headers", "X-Total-Count"))
+        .insert_header(("X-Total-Count", format!("{}", qtd)))
         .json(transactions))
 }
 
