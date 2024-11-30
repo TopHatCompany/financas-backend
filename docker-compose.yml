@@ -5,10 +5,11 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ./.docker/pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -28,13 +29,36 @@ services:
       - traefik.http.routers.pgadmin.tls.certresolver=le
       - traefik.http.services.pgadmin.loadbalancer.server.port=80
     environment:
-      TZ: America/Sao_Paulo
-      PUID: 1000
-      PGID: 1000
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ./.docker/pgadmin:/var/lib/pgadmin
-    # ports:
-    #   - "${PGADMIN_PORT:-5050}:80"
     restart: unless-stopped
+  server:
+    # build:
+    # context: .
+    # target: final
+    image: financas-backend-image:latest
+    # ports:
+    # - 3001:8000
+    environment:
+      - PG_DBNAME=postgres
+      - DATABASE_URL=postgres://postgres:password@db:5432/postgres
+      - RUST_BACKTRACE=full
+      - CLIENT_HOST=https://financas.emerson.abc.br
+      - PG_USER=postgres
+      - PG_PASSWORD=password
+      - ADDRESS=0.0.0.0:8000
+      - RUST_LOG=debug
+    labels:
+      - traefik.enable=true
+      - "traefik.http.routers.financas-api.rule=Host(`financas-api.emerson.abc.br`)"
+      - traefik.http.routers.financas-api.service=financas-api
+      - traefik.http.routers.financas-api.entrypoints=websecure
+      - traefik.http.routers.financas-api.tls=true
+      - traefik.http.routers.financas-api.tls.certresolver=le
+      - traefik.http.services.financas-api.loadbalancer.server.port=8000
+    depends_on:
+      db:
+        condition: service_healthy

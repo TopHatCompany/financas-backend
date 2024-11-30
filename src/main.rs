@@ -23,6 +23,7 @@ async fn main() -> std::io::Result<()> {
         let logger = middleware::Logger::default();
         let cors = Cors::default()
             .allowed_origin(&client_origin)
+            .allowed_origin("http://localhost:5173")
             .allow_any_method()
             .allow_any_header()
             .max_age(3600);
