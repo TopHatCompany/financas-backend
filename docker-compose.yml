@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:14
+    image: postgres:17
     container_name: db
     ports:
       - "5432:5432"
@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: postgres
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./.docker/pgdata:/var/lib/postgresql/data
+      - ./.docker/pgdata17/pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
   pgadmin:
     container_name: pgadmin_container
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:8.13.0
     labels:
       - traefik.enable=true
       - "traefik.http.routers.pgadmin.rule=Host(`db.emerson.abc.br`)"
