@@ -35,7 +35,7 @@ pub struct SummaryAccount {
     pub transactions: Vec<crate::db::models::Transaction>,
 }
 
-#[get("/accounts")]
+#[get("/summary")]
 pub async fn get_summary(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
     let mut transactions = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
@@ -55,7 +55,10 @@ pub async fn get_summary(pool: web::Data<DbPool>) -> actix_web::Result<impl Resp
         let group = result.entry(t.account.to_lowercase()).or_default();
         group.push(t);
     });
-    Ok(HttpResponse::Ok().json(result))
+    Ok(HttpResponse::Ok()
+        .insert_header(("Access-Control-Expose-Headers", "X-Total-Count"))
+        .insert_header(("X-Total-Count", format!("{}", 1)))
+        .json(result))
 }
 
 #[derive(Deserialize, Debug)]
@@ -73,6 +76,7 @@ pub async fn get_transactions(
     let mut a = 0;
     let mut b = 10;
 
+    // Split by comma and parse
     if let Some(range) = &info.range {
         let trimmed = &range[1..range.len() - 1];
         let parts: Vec<&str> = trimmed.split(',').collect();
@@ -80,7 +84,6 @@ pub async fn get_transactions(
         b = parts[1].parse().unwrap();
     }
 
-    // Split by comma and parse
     let today: NaiveDateTime = chrono::Local::now().naive_local();
     let first_day: NaiveDate = NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
         .unwrap()

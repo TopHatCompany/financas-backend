@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4.9.0"
-bigdecimal = { version = "0.4.5", features = ["serde"] }
+bigdecimal = { version = "0.4.6", features = ["serde"] }
 chrono = { version = "0.4.24", features = ["serde"] }
-derive_more = "0.99.17"
+derive_more = { version = "1.0.0", features = ["full"] }
 diesel = { version = "2.0.4", features = ["extras", "postgres"] }
 env_logger = "0.11.5"
 log = "0.4.17"
