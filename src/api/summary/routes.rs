@@ -1,0 +1,7 @@
+use actix_web::{web, Scope};
+
+use super::handlers::*;
+
+pub fn routes() -> Scope {
+    web::scope("/summary").service(get)
+}

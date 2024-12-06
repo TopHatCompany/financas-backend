@@ -1,6 +1,9 @@
+use super::types::*;
 use std::cmp::Reverse;
 
+use crate::api::transactions::types::NewTransactionRequest;
 use crate::db::utils::DbPool;
+use crate::extractors::Claims;
 use actix_web::web::Path;
 use actix_web::{
     delete, get, post,
@@ -9,73 +12,16 @@ use actix_web::{
 use actix_web::{error, HttpResponse, Responder};
 use chrono::{Datelike, Days, Months, NaiveDate, NaiveDateTime};
 use log::debug;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize)]
-pub struct Trasaction {
-    label: String,
-}
-
-#[derive(Deserialize)]
-pub struct NewTransactionRequest {
-    pub transacted_date: chrono::NaiveDate,
-    pub amount: bigdecimal::BigDecimal,
-    pub currency: String,
-    pub account: String,
-    pub description: String,
-    pub label: String,
-    pub kind: String,
-    pub opts: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct SummaryAccount {
-    pub account: String,
-    pub transactions: Vec<crate::db::models::Transaction>,
-}
-
-#[get("/summary")]
-pub async fn get_summary(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
-    let mut transactions = web::block(move || {
-        // Obtaining a connection from the pool is also a potentially blocking operation.
-        // So, it should be called within the `web::block` closure, as well.
-        let mut conn = pool.get().expect("couldn't get db connection from pool");
-
-        crate::db::models::Transaction::all(&mut conn)
-    })
-    .await?
-    .map_err(error::ErrorInternalServerError)?;
-
-    transactions.sort_by_key(|a| Reverse(a.transacted_date));
-
-    let mut result: HashMap<String, Vec<crate::db::models::Transaction>> = HashMap::new();
-
-    transactions.into_iter().for_each(|t| {
-        let group = result.entry(t.account.to_lowercase()).or_default();
-        group.push(t);
-    });
-    Ok(HttpResponse::Ok()
-        .insert_header(("Access-Control-Expose-Headers", "X-Total-Count"))
-        .insert_header(("X-Total-Count", format!("{}", 1)))
-        .json(result))
-}
-
-#[derive(Deserialize, Debug)]
-struct Info {
-    sort: Option<String>,
-    filter: Option<String>,
-    range: Option<String>,
-}
-
-#[get("/transactions")]
-pub async fn get_transactions(
+#[get("")]
+pub async fn get_all(
     info: web::Query<Info>,
     pool: web::Data<DbPool>,
+    claims: Claims,
 ) -> actix_web::Result<impl Responder> {
     let mut a = 0;
     let mut b = 10;
-
+    let pool = pool.clone();
     // Split by comma and parse
     if let Some(range) = &info.range {
         let trimmed = &range[1..range.len() - 1];
@@ -99,6 +45,8 @@ pub async fn get_transactions(
         today, first_day, last_day
     );
     debug!("query string info: {:?} {} {}", info, a, b);
+
+    debug!("claim: {:?}", claims.sub);
     let mut conn = pool.get().expect("couldn't get db connection from pool");
     let qtd = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
@@ -122,11 +70,12 @@ pub async fn get_transactions(
         .json(transactions))
 }
 
-#[post("/transactions")]
-pub async fn create_transaction(
+#[post("")]
+pub async fn create(
     pool: web::Data<DbPool>,
     request: Json<NewTransactionRequest>,
 ) -> actix_web::Result<impl Responder> {
+    let pool = pool.clone();
     let new_transaction = crate::db::models::NewTransaction {
         transacted_date: request.transacted_date.to_owned(),
         amount: request.amount.to_owned(),
@@ -151,11 +100,12 @@ pub async fn create_transaction(
     Ok(HttpResponse::Created().json(transaction))
 }
 
-#[get("/transactions/{transaction_id}")]
-pub async fn get_transaction(
+#[get("/{transaction_id}")]
+pub async fn retrieve(
     pool: web::Data<DbPool>,
     transaction_id: Path<uuid::Uuid>,
 ) -> actix_web::Result<impl Responder> {
+    let pool = pool.clone();
     let result = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
@@ -169,11 +119,12 @@ pub async fn get_transaction(
     Ok(HttpResponse::Ok().json(result))
 }
 
-#[delete("/transactions/{transaction_id}")]
-pub async fn delete_transaction(
+#[delete("/{transaction_id}")]
+pub async fn erase(
     pool: web::Data<DbPool>,
     transaction_id: Path<uuid::Uuid>,
 ) -> actix_web::Result<impl Responder> {
+    let pool = pool.clone();
     let result = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
