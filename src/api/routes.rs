@@ -1,3 +1,4 @@
+use super::accounts;
 use super::summary;
 use super::transactions;
 use actix_web::web;
@@ -7,4 +8,5 @@ pub fn routes() -> Scope {
     web::scope("/api")
         .service(transactions::routes())
         .service(summary::routes())
+        .service(accounts::routes())
 }

@@ -51,7 +51,7 @@ pub async fn get_all(
     let qtd = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
-        crate::db::models::Transaction::count(&mut conn)
+        crate::db::models::Transaction::count(claims.sub, &mut conn)
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
@@ -59,7 +59,7 @@ pub async fn get_all(
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
         let mut conn = pool.get().expect("couldn't get db connection from pool");
-        crate::db::models::Transaction::month(first_day, last_day, (a, b), &mut conn)
+        crate::db::models::Transaction::month(first_day, last_day, (a, b), claims.sub, &mut conn)
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
