@@ -26,3 +26,4 @@ envy = "0.4.2"
 awc = { version = "3.5.1", features = ["rustls-0_23"] }
 rustls = "0.23.19"
 webpki-roots = "0.26.7"
+diesel_migrations = "2.2.0"
