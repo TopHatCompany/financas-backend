@@ -11,7 +11,7 @@ pub async fn get(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
         // So, it should be called within the `web::block` closure, as well.
         let mut conn = pool.get().expect("couldn't get db connection from pool");
 
-        crate::db::models::Transaction::all(&mut conn)
+        crate::db::models::Transaction::all("".to_string(), &mut conn)
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
@@ -21,7 +21,7 @@ pub async fn get(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
     let mut result: HashMap<String, Vec<crate::db::models::Transaction>> = HashMap::new();
 
     transactions.into_iter().for_each(|t| {
-        let group = result.entry(t.account.to_lowercase()).or_default();
+        let group = result.entry(t.account_id.to_string()).or_default();
         group.push(t);
     });
     Ok(HttpResponse::Ok()

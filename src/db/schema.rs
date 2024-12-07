@@ -6,7 +6,7 @@ diesel::table! {
         transacted_date -> Date,
         amount -> Numeric,
         currency -> Text,
-        account -> Text,
+        account_id -> Uuid,
         description -> Text,
         label -> Text,
         kind -> Text,
@@ -38,6 +38,7 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(transactions -> users_accounts (account_id));
 diesel::joinable!(users_accounts -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(transactions, users, users_accounts,);

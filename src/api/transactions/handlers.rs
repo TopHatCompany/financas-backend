@@ -2,6 +2,8 @@ use super::types::*;
 use std::cmp::Reverse;
 
 use crate::api::transactions::types::NewTransactionRequest;
+use crate::db;
+use crate::db::models::UsersAccount;
 use crate::db::utils::DbPool;
 use crate::extractors::Claims;
 use actix_web::web::Path;
@@ -51,7 +53,7 @@ pub async fn get_all(
     let qtd = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
-        crate::db::models::Transaction::count(claims.sub, &mut conn)
+        crate::db::models::Transaction::count("".to_string(), &mut conn)
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
@@ -76,21 +78,24 @@ pub async fn create(
     request: Json<NewTransactionRequest>,
 ) -> actix_web::Result<impl Responder> {
     let pool = pool.clone();
-    let new_transaction = crate::db::models::NewTransaction {
-        transacted_date: request.transacted_date.to_owned(),
-        amount: request.amount.to_owned(),
-        description: request.description.to_owned(),
-        label: request.label.to_owned(),
-        kind: request.kind.to_owned().to_string(),
-        currency: request.currency.to_owned(),
-        account: request.account.to_owned(),
-        opts: request.opts.to_owned(),
-    };
 
     let transaction = web::block(move || {
+        let mut conn = pool.get().expect("couldn't get db connection from pool");
+        let account: UsersAccount =
+            db::models::UsersAccount::get_one(request.account_id, &mut conn).unwrap();
+        let new_transaction = crate::db::models::NewTransaction {
+            transacted_date: request.transacted_date.to_owned(),
+            amount: request.amount.to_owned(),
+            description: request.description.to_owned(),
+            label: request.label.to_owned(),
+            kind: request.kind.to_owned().to_string(),
+            currency: request.currency.to_owned(),
+            account_id: account.account_id,
+            opts: request.opts.to_owned(),
+        };
+
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
-        let mut conn = pool.get().expect("couldn't get db connection from pool");
 
         new_transaction.create(&mut conn)
     })

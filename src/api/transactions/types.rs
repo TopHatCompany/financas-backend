@@ -10,7 +10,7 @@ pub struct NewTransactionRequest {
     pub transacted_date: chrono::NaiveDate,
     pub amount: bigdecimal::BigDecimal,
     pub currency: String,
-    pub account: String,
+    pub account_id: uuid::Uuid,
     pub description: String,
     pub label: String,
     pub kind: String,
