@@ -50,6 +50,9 @@ services:
       - PG_USER=postgres
       - PG_PASSWORD=password
       - ADDRESS=0.0.0.0:8000
+      - PORT=8000
+      - AUTH0_AUDIENCE=https://financas-api.emerson.abc.br
+      - AUTH0_DOMAIN=dev-bbmjk43j6ecm7qiu.us.auth0.com
       - RUST_LOG=debug
     labels:
       - traefik.enable=true
