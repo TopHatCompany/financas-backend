@@ -1,23 +1,29 @@
 use crate::types::ErrorMessage;
 use actix_web::{
     dev::Payload,
-    error,
     http::{StatusCode, Uri},
     web, Error, FromRequest, HttpRequest, HttpResponse, ResponseError,
 };
 use actix_web_httpauth::{
     extractors::bearer::BearerAuth, headers::www_authenticate::bearer::Bearer,
 };
-use awc::Client;
 use derive_more::derive::Display;
 use jsonwebtoken::{
     decode, decode_header,
-    jwk::{AlgorithmParameters, JwkSet},
+    jwk::{self, AlgorithmParameters, JwkSet},
     Algorithm, DecodingKey, Validation,
 };
-use log::debug;
+use log::{debug, info};
 use serde::Deserialize;
-use std::{collections::HashSet, future::Future, pin::Pin, string};
+use std::{
+    collections::HashSet,
+    env::{self, temp_dir},
+    future::Future,
+    io::Write,
+    path::Path,
+    pin::Pin,
+    string,
+};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct Auth0Config {
@@ -45,6 +51,22 @@ enum ClientError {
     UnsupportedAlgortithm(AlgorithmParameters),
 }
 
+#[derive(Debug, Display)]
+enum ServerError {
+    #[display("validation_error")]
+    ValidationError(String), // errors related to signature validation (catch-all; fetching /jwks.json)
+}
+impl ResponseError for ServerError {
+    fn error_response(&self) -> HttpResponse {
+        match self {
+            _ => HttpResponse::InternalServerError().json("Internal Server Error"),
+        }
+    }
+
+    fn status_code(&self) -> StatusCode {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+}
 impl ResponseError for ClientError {
     fn error_response(&self) -> HttpResponse {
         match self {
@@ -84,6 +106,8 @@ impl ResponseError for ClientError {
 
 #[derive(Debug, Deserialize)]
 pub struct Claims {
+    // #[serde(rename = "sub")] // appears as "sub" in JWT
+    // pub auth0_id: String,
     pub sub: String,
     _permissions: Option<HashSet<String>>,
 }
@@ -106,22 +130,44 @@ impl FromRequest for Claims {
                 ClientError::NotFound("kid not found in token header".to_string())
             })?;
             let domain = config.domain.as_str();
-            let jwks: JwkSet = client
-                .get(
-                    Uri::builder()
-                        .scheme("https")
-                        .authority(domain)
-                        .path_and_query("/.well-known/jwks.json")
-                        .build()
-                        .unwrap(),
-                )
-                .insert_header(("Accept", "application/json"))
-                .send()
-                .await
-                .unwrap()
-                .json::<JwkSet>()
-                .await
-                .unwrap();
+            // JSON Web Key Sets
+            // fetch_latest_jwks_json() only if:
+            // 1) ./jwks.json doesn't exist
+            // 2) ./jwks.json exists but old
+            let mut jwks_path = std::env::temp_dir();
+            jwks_path.push("./jwks.json");
+            if !Path::new(&jwks_path).exists() {
+                info!("Backend is making a request to /.well-known/jwks.json");
+                let mut new_cached_file =
+                    std::fs::File::create(&jwks_path).expect("fail to open file");
+                let jwks_response_bytes = client
+                    .get(
+                        Uri::builder()
+                            .scheme("https")
+                            .authority(domain)
+                            .path_and_query("/.well-known/jwks.json")
+                            .build()
+                            .unwrap(),
+                    )
+                    .insert_header(("Accept", "application/json"))
+                    .send()
+                    .await
+                    .map_err(|send_request_error| {
+                        debug!("falhou aqui");
+                        ServerError::ValidationError(send_request_error.to_string())
+                    })?
+                    .body()
+                    .await
+                    .map_err(|payload_error| {
+                        debug!("falhou aqui2");
+                        ServerError::ValidationError(payload_error.to_string())
+                    })?;
+                new_cached_file.write_all(&jwks_response_bytes)?;
+            }
+            let cached_file = std::fs::read_to_string(jwks_path).unwrap(); // cached_file should be Ok(_) by now
+            let var_name = serde_json::from_str(&cached_file);
+            let jwks: JwkSet = var_name
+                .map_err(|serde_error| ServerError::ValidationError(serde_error.to_string()))?;
             let jwk = jwks
                 .find(&kid)
                 .ok_or_else(|| ClientError::NotFound("No JWK found for kid".to_string()))?;
@@ -138,9 +184,11 @@ impl FromRequest for Claims {
                         .unwrap()]);
                     let key = DecodingKey::from_rsa_components(&rsa.n, &rsa.e)
                         .map_err(ClientError::Decode)?;
-                    debug!("{:?}", token);
+                    debug!("token: {:?}", token);
                     let token =
                         decode::<Claims>(token, &key, &validation).map_err(ClientError::Decode)?;
+
+                    debug!("decoded token: {:?}", token);
                     Ok(token.claims)
                 }
                 algorithm => Err(ClientError::UnsupportedAlgortithm(algorithm).into()),

@@ -68,6 +68,11 @@ impl User {
         use crate::db::schema::users::dsl::*;
         users.filter(identification.eq(sub)).first::<User>(conn)
     }
+
+    pub fn get_all_by_sub(sub: String, conn: &mut PgConnection) -> diesel::QueryResult<Vec<User>> {
+        use crate::db::schema::users::dsl::*;
+        users.filter(identification.eq(sub)).load(conn)
+    }
 }
 
 impl UsersAccount {
@@ -76,12 +81,24 @@ impl UsersAccount {
         UsersAccount::belonging_to(&user).load::<UsersAccount>(conn)
     }
 
-    pub fn get_one(id_to_find: Uuid, conn: &mut PgConnection) -> diesel::QueryResult<UsersAccount> {
-        // use crate::db::schema::transactions::dsl::*;
-        // use crate::db::schema::users::dsl::*;
+    pub fn get_one(
+        id_to_find: uuid::Uuid,
+        _sub: String,
+        conn: &mut PgConnection,
+    ) -> diesel::QueryResult<UsersAccount> {
         use crate::db::schema::users_accounts::dsl::*;
 
+        // let user = User::get_by_sub(sub, conn).expect("expect to get an existent user");
         users_accounts.find(id_to_find).first(conn)
+    }
+
+    pub fn get_transactions(
+        id: uuid::Uuid,
+        sub: String,
+        conn: &mut PgConnection,
+    ) -> diesel::QueryResult<Vec<Transaction>> {
+        let account = UsersAccount::get_one(id, sub, conn).expect("expect to get an existent user");
+        Transaction::belonging_to(&account).load(conn)
     }
 }
 

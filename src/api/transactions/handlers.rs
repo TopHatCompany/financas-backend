@@ -76,13 +76,14 @@ pub async fn get_all(
 pub async fn create(
     pool: web::Data<DbPool>,
     request: Json<NewTransactionRequest>,
+    claims: Claims,
 ) -> actix_web::Result<impl Responder> {
     let pool = pool.clone();
 
     let transaction = web::block(move || {
         let mut conn = pool.get().expect("couldn't get db connection from pool");
         let account: UsersAccount =
-            db::models::UsersAccount::get_one(request.account_id, &mut conn).unwrap();
+            db::models::UsersAccount::get_one(request.account_id, claims.sub, &mut conn).unwrap();
         let new_transaction = crate::db::models::NewTransaction {
             transacted_date: request.transacted_date.to_owned(),
             amount: request.amount.to_owned(),
