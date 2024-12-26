@@ -2,16 +2,16 @@ use std::{cmp::Reverse, collections::HashMap};
 
 use actix_web::{error, get, web, HttpResponse, Responder};
 
-use crate::db::utils::DbPool;
+use crate::{db::utils::DbPool, extractors::Claims};
 
 #[get("")]
-pub async fn get(pool: web::Data<DbPool>) -> actix_web::Result<impl Responder> {
+pub async fn get(pool: web::Data<DbPool>, claims: Claims) -> actix_web::Result<impl Responder> {
     let mut transactions = web::block(move || {
         // Obtaining a connection from the pool is also a potentially blocking operation.
         // So, it should be called within the `web::block` closure, as well.
         let mut conn = pool.get().expect("couldn't get db connection from pool");
 
-        crate::db::models::Transaction::all("".to_string(), &mut conn)
+        crate::db::models::Transaction::all(&claims.sub, &mut conn)
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;

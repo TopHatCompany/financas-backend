@@ -1,6 +1,7 @@
 use crate::db::schema::transactions;
 use crate::db::schema::users;
 use crate::db::schema::users_accounts;
+use actix_web::web;
 use bigdecimal::BigDecimal;
 use chrono::NaiveDate;
 use chrono::NaiveDateTime;
@@ -103,47 +104,117 @@ impl UsersAccount {
 }
 
 impl Transaction {
-    pub(crate) fn all(
-        _sub: String,
-        conn: &mut PgConnection,
-    ) -> diesel::QueryResult<Vec<Transaction>> {
-        use crate::db::schema::transactions::dsl::*;
-        // use crate::db::schema::users::dsl::*;
+    pub(crate) fn all(sub: &str, conn: &mut PgConnection) -> diesel::QueryResult<Vec<Transaction>> {
+        // use crate::db::schema::transactions::dsl::*;
+        use crate::db::schema::users::dsl::*;
         // use crate::db::schema::users_accounts::dsl::*;
         // normal diesel operations
-        let result: Result<Vec<Transaction>, diesel::result::Error> = transactions
-            // .inner_join(users_accounts.on(transactions.account.eq(users_accounts.identification)))
-            // .inner_join(users.on(users_accounts.user_id.eq(users.id)))
-            // .filter(users.identification.eq(sub))
-            .load(conn);
-        result
+        Transaction::belonging_to(
+            &UsersAccount::belonging_to(&users.filter(identification.eq(sub)).first::<User>(conn)?)
+                .load::<UsersAccount>(conn)?,
+        )
+        .load(conn)
     }
 
     pub(crate) fn month(
-        lower_transacted: NaiveDate,
-        upper_transacted: NaiveDate,
+        _lower_transacted: NaiveDate,
+        _upper_transacted: NaiveDate,
         range: (i64, i64),
-        sub: String,
+        sort_column: &str,
+        sort_order: &str,
+        sub: &str,
         conn: &mut PgConnection,
     ) -> diesel::QueryResult<Vec<Transaction>> {
         use crate::db::schema::transactions::dsl::*;
+        use crate::db::schema::users::dsl::*;
 
-        // users::table
-        // .filter(users::identification.eq(sub))
-        // .inner_join(users_accounts::table)
-        // .inner_join(transactions::table)
-        // .order_by(transactions::transacted_date.desc())
-        // .limit(range.1)
-        // .offset(range.0)
-        // .select(transactions::as_select())
-        // .load::<Transaction>(conn)
+        let user_accounts =
+            UsersAccount::belonging_to(&users.filter(identification.eq(sub)).first::<User>(conn)?)
+                .load::<UsersAccount>(conn)?;
 
-        // .filter(transactions::account_id.eq(sub))
-        transactions
-            .order_by(transacted_date.desc())
-            .limit(range.1)
-            .offset(range.0)
-            .load(conn)
+        // Determine sorting column and direction
+        let mut query = Transaction::belonging_to(&user_accounts).into_boxed();
+
+        // Apply sorting dynamically
+        query = match sort_column {
+            "id" => {
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(id.desc())
+                } else {
+                    query.order(id.asc())
+                }
+            }
+            "transacted_date" => {
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(transacted_date.desc())
+                } else {
+                    query.order(transacted_date.asc())
+                }
+            }
+            "amount" => {
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(amount.desc())
+                } else {
+                    query.order(amount.asc())
+                }
+            }
+            "currency" => {
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(currency.desc())
+                } else {
+                    query.order(currency.asc())
+                }
+            }
+            "description" => {
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(description.desc())
+                } else {
+                    query.order(description.asc())
+                }
+            }
+            "label" => {
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(label.desc())
+                } else {
+                    query.order(label.asc())
+                }
+            }
+            "kind" => {
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(kind.desc())
+                } else {
+                    query.order(kind.asc())
+                }
+            }
+            "opts" => {
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(opts.desc())
+                } else {
+                    query.order(opts.asc())
+                }
+            }
+            "created_at" => {
+                use crate::db::schema::transactions;
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(transactions::created_at.desc()) // Fully qualified
+                } else {
+                    query.order(transactions::created_at.asc()) // Fully qualified
+                }
+            }
+            "updated_at" => {
+                use crate::db::schema::transactions;
+                if sort_order.eq_ignore_ascii_case("DESC") {
+                    query.order(transactions::updated_at.desc()) // Fully qualified
+                } else {
+                    query.order(transactions::updated_at.asc()) // Fully qualified
+                }
+            }
+            _ => {
+                // Default to transacted_date ASC
+                query.order(transacted_date.desc())
+            }
+        };
+        query.limit(range.1).offset(range.0).load(conn)
     }
 
     pub(crate) fn one(
@@ -161,17 +232,15 @@ impl Transaction {
         diesel::delete(transactions.filter(id.eq(id_to_erase))).execute(conn)
     }
 
-    pub(crate) fn count(_sub: String, conn: &mut PgConnection) -> diesel::QueryResult<i64> {
-        use crate::db::schema::transactions::dsl::*;
-        // use crate::db::schema::users::dsl::*;
-        // use crate::db::schema::users_accounts::dsl::*;
+    pub(crate) fn count(sub: &str, conn: &mut PgConnection) -> diesel::QueryResult<i64> {
+        use crate::db::schema::users::dsl::*;
         // normal diesel operation
-        transactions
-            // .inner_join(users_accounts.on(transactions.account.eq(users_accounts.identification)))
-            // .inner_join(users.on(users_accounts.user_id.eq(users.user_id)))
-            // .filter(users.eq(sub))
-            .count()
-            .first(conn)
+        Transaction::belonging_to(
+            &UsersAccount::belonging_to(&users.filter(identification.eq(sub)).first::<User>(conn)?)
+                .load::<UsersAccount>(conn)?,
+        )
+        .count()
+        .first(conn)
     }
 }
 

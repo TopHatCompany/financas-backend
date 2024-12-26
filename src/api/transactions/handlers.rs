@@ -21,51 +21,89 @@ pub async fn get_all(
     pool: web::Data<DbPool>,
     claims: Claims,
 ) -> actix_web::Result<impl Responder> {
-    let mut a = 0;
-    let mut b = 10;
-    let pool = pool.clone();
+    let (mut a, mut b) = (0, 10);
+
+    let mut sort_column = "id".to_string();
+    let mut sort_order = "ASC".to_string();
+
     // Split by comma and parse
     if let Some(range) = &info.range {
-        let trimmed = &range[1..range.len() - 1];
-        let parts: Vec<&str> = trimmed.split(',').collect();
-        a = parts[0].parse().unwrap();
-        b = parts[1].parse().unwrap();
+        if let Some(trimmed) = range.strip_prefix('(').and_then(|s| s.strip_suffix(')')) {
+            let parts: Vec<&str> = trimmed.split(',').collect();
+            if parts.len() == 2 {
+                a = parts[0].parse().unwrap_or(0);
+                b = parts[1].parse().unwrap_or(10);
+            }
+        }
+    }
+
+    // Parse sort parameter if provided
+    if let Some(sort) = &info.sort {
+        if let Some(trimmed) = sort.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
+            let parts: Vec<&str> = trimmed.split(',').map(|s| s.trim_matches('"')).collect();
+            if parts.len() == 2 {
+                sort_column = parts[0].to_string();
+                sort_order = parts[1].to_uppercase();
+                if !["ASC", "DESC"].contains(&sort_order.as_str()) {
+                    sort_order = "ASC".to_string(); // Default to ASC if invalid
+                }
+            }
+        }
     }
 
     let today: NaiveDateTime = chrono::Local::now().naive_local();
     let first_day: NaiveDate = NaiveDate::from_ymd_opt(today.year(), today.month(), 1)
-        .unwrap()
-        .checked_sub_months(Months::new(48))
-        .unwrap();
+        .and_then(|date| date.checked_sub_months(Months::new(48)))
+        .ok_or_else(|| error::ErrorInternalServerError("Invalid first day calculation"))?;
     let last_day: NaiveDate = first_day
         .checked_add_months(Months::new(48))
-        .unwrap()
-        .checked_sub_days(Days::new(1))
-        .unwrap();
+        .and_then(|date| date.checked_sub_days(Days::new(1)))
+        .ok_or_else(|| error::ErrorInternalServerError("Invalid last day calculation"))?;
+
     debug!(
         "today: {}\t\tfirst_day: {}\t\tlast_day: {}",
         today, first_day, last_day
     );
     debug!("query string info: {:?} {} {}", info, a, b);
+    debug!("claim: {:?}", &claims.sub);
 
-    debug!("claim: {:?}", claims.sub);
-    let mut conn = pool.get().expect("couldn't get db connection from pool");
-    let qtd = web::block(move || {
-        // Obtaining a connection from the pool is also a potentially blocking operation.
-        // So, it should be called within the `web::block` closure, as well.
-        crate::db::models::Transaction::count("".to_string(), &mut conn)
+    let qtd = web::block({
+        let pool = pool.clone();
+        let sub = claims.sub.clone();
+        move || {
+            // Obtaining a connection from the pool is also a potentially blocking operation.
+            // So, it should be called within the `web::block` closure, as well.
+            let mut conn = pool.get().expect("couldn't get db connection from pool");
+            crate::db::models::Transaction::count(&sub, &mut conn)
+        }
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
-    let mut transactions = web::block(move || {
-        // Obtaining a connection from the pool is also a potentially blocking operation.
-        // So, it should be called within the `web::block` closure, as well.
-        let mut conn = pool.get().expect("couldn't get db connection from pool");
-        crate::db::models::Transaction::month(first_day, last_day, (a, b), claims.sub, &mut conn)
+
+    let transactions = web::block({
+        let pool = pool.clone();
+        let sub = claims.sub.clone();
+        let sort_column = sort_column.clone();
+        let sort_order = sort_order.clone();
+
+        move || {
+            // Obtaining a connection from the pool is also a potentially blocking operation.
+            // So, it should be called within the `web::block` closure, as well.
+            let mut conn = pool.get().expect("couldn't get db connection from pool");
+            crate::db::models::Transaction::month(
+                first_day,
+                last_day,
+                (a, b),
+                &sort_column,
+                &sort_order,
+                &sub,
+                &mut conn,
+            )
+        }
     })
     .await?
     .map_err(error::ErrorInternalServerError)?;
-    transactions.sort_by_key(|a| Reverse(a.transacted_date));
+
     Ok(HttpResponse::Ok()
         .insert_header(("Access-Control-Expose-Headers", "X-Total-Count"))
         .insert_header(("X-Total-Count", format!("{}", qtd)))
