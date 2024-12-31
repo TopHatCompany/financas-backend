@@ -26,9 +26,9 @@ jobs:
           ref: "${{ github.event.pull_request.head.sha }}"
       - name: Install libpq-dev and clang-18 (Linux)
         run: |
-          sudo apt-get update
           sudo apt remove -y gcc-9
-          sudo apt-get install -y clang-18 libpq-dev
+          sudo apt-get update
+          sudo apt-get install -y gcc-10 clang-18 libpq-dev build-essential
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -51,9 +51,9 @@ jobs:
           ref: "${{ github.event.pull_request.head.sha }}"
       - name: Install libpq-dev and clang-18 (Linux)
         run: |
-          sudo apt-get update
           sudo apt remove -y gcc-9
-          sudo apt-get install -y clang-18 libpq-dev
+          sudo apt-get update
+          sudo apt-get install -y gcc-10 clang-18 libpq-dev build-essential
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -74,9 +74,9 @@ jobs:
           ref: "${{ github.event.pull_request.head.sha }}"
       - name: Install libpq-dev and clang-18 (Linux)
         run: |
-          sudo apt-get update
           sudo apt remove -y gcc-9
-          sudo apt-get install -y clang-18 libpq-dev
+          sudo apt-get update
+          sudo apt-get install -y gcc-10 clang-18 libpq-dev build-essential
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cargo Target Cache
@@ -96,9 +96,9 @@ jobs:
           ref: "${{ github.event.pull_request.head.sha }}"
       - name: Install libpq-dev and clang-18 (Linux)
         run: |
-          sudo apt-get update
           sudo apt remove -y gcc-9
-          sudo apt-get install -y clang-18 libpq-dev
+          sudo apt-get update
+          sudo apt-get install -y gcc-10 clang-18 libpq-dev build-essential
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cargo Target Cache
