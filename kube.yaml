@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: financas-api
+  namespace: financas-app
+  labels:
+    app.kubernetes.io/name: financas-api
+    app.kubernetes.io/instance: financas-api
+    app: financas-api
+spec:
+  replicas: 1
+  minReadySeconds: 5
+  selector:
+    matchLabels:
+      app: financas-api
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: financas-api
+    spec:
+      containers:
+        - name: financas-api
+          image: ghcr.io/tophatcompany/financas-backend/api
+          imagePullPolicy: Always
+          env:
+            - name: AUTH0_AUDIENCE
+              valueFrom:
+                secretKeyRef:
+                  name: financas-env
+                  key: audience
+            - name: AUTH0_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: financas-env
+                  key: auth_domain
+            - name: RUST_LOG
+              value: "debug"
+            - name: RUST_BACKTRACE
+              value: "1"
+            - name: PORT
+              value: "8000"
+            - name: CLIENT_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: financas-env
+                  key: client_host
+            - name: CLIENT_ORIGIN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: financas-env
+                  key: origin_url
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: financas-env
+                  key: database_url
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10M
+            limits:
+              cpu: 20m
+              memory: 20M
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: financas-api
+  namespace: financas-app
+  labels:
+    app: financas-api
+spec:
+  selector:
+    app: financas-api
+  type: LoadBalancer
+  ports:
+    - name: financas-api
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
