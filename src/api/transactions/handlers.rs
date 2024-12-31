@@ -1,5 +1,4 @@
 use super::types::*;
-use std::cmp::Reverse;
 
 use crate::api::transactions::types::NewTransactionRequest;
 use crate::db;

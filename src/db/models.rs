@@ -1,7 +1,6 @@
 use crate::db::schema::transactions;
 use crate::db::schema::users;
 use crate::db::schema::users_accounts;
-use actix_web::web;
 use bigdecimal::BigDecimal;
 use chrono::NaiveDate;
 use chrono::NaiveDateTime;

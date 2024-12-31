@@ -20,6 +20,6 @@ pub struct NewTransactionRequest {
 #[derive(Deserialize, Debug)]
 pub struct Info {
     pub sort: Option<String>,
-    pub filter: Option<String>,
+    pub _filter: Option<String>,
     pub range: Option<String>,
 }
