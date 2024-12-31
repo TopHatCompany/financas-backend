@@ -2,30 +2,107 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
 
 env:
+  CC: clang-18
+  CXX: clang++-18
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: short
+  # CI builds don't benefit very much from this.
+  CARGO_INCREMENTAL: 0
+  # We can't use a debugger in CI, and this makes builds faster and the cache
+  # smaller. (TODO: use -Cdebuginfo=0 if it doesn't make backtraces useless)
+  RUSTFLAGS: -Cdebuginfo=1
 
 jobs:
+  format:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: "${{ github.event.pull_request.head.sha }}"
+      - name: Install libpq-dev and clang-18 (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libpq-dev build-essential
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Cargo Target Cache
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('Cargo.toml') }}
+      - name: Format code
+        run: cargo fmt --all --check
+
+  clippy:
+    runs-on: self-hosted
+    name: clippy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: "${{ github.event.pull_request.head.sha }}"
+      - name: Install libpq-dev and clang-18 (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libpq-dev build-essential
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Cargo Target Cache
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('Cargo.toml') }}
+      - name: Cargo clippy
+        run: cargo clippy --target x86_64-unknown-linux-gnu
+
+  test:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: "${{ github.event.pull_request.head.sha }}"
+      - name: Install libpq-dev and clang-18 (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libpq-dev build-essential
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cargo Target Cache
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('Cargo.toml') }}
+      - name: Run tests
+        run: cargo test --verbose
+
   build:
     runs-on: self-hosted
-    container:
-      image: rust:latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        ref: "${{ github.event.pull_request.head.sha }}"
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt
-    - name: Format code
-      run: cargo fmt --all --check
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: "${{ github.event.pull_request.head.sha }}"
+      - name: Install libpq-dev and clang-18 (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libpq-dev build-essential
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cargo Target Cache
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('Cargo.toml') }}
+      - name: Cargo Build Release
+        run: cargo build --verbose --release
