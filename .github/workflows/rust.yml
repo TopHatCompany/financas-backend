@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  CC: clang
-  CXX: clang++
+  CC: clang-18
+  CXX: clang++-18
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: short
   # CI builds don't benefit very much from this.
