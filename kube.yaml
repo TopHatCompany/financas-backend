@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: financas-api
-          image: ghcr.io/tophatcompany/financas-backend/api
+          image: ghcr.io/tophatcompany/financas-backend:main
           imagePullPolicy: Always
           env:
             - name: AUTH0_AUDIENCE
