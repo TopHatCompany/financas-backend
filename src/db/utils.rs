@@ -1,4 +1,4 @@
-use diesel::{r2d2, PgConnection};
+use diesel::{r2d2, Connection, PgConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
@@ -15,7 +15,7 @@ pub fn get_pool(db_url: &str) -> DbPool {
     pool.get()
         .unwrap()
         .run_pending_migrations(MIGRATIONS)
-        .unwrap();
+        .unwrap_err();
 
     pool
 }
