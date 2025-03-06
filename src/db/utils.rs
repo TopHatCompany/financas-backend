@@ -1,4 +1,4 @@
-use diesel::{r2d2, Connection, PgConnection};
+use diesel::{r2d2, PgConnection};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
