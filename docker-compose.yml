@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
   pgadmin:
     container_name: pgadmin_container
-    image: dpage/pgadmin4:8.13.0
+    image: dpage/pgadmin4:8.14.0
     labels:
       - traefik.enable=true
       - "traefik.http.routers.pgadmin.rule=Host(`db.emerson.abc.br`)"
