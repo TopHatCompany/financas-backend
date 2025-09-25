@@ -22,7 +22,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: "${{ github.event.pull_request.head.sha }}"
       - name: Install libpq-dev and clang-18 (Linux)
@@ -47,7 +47,7 @@ jobs:
     needs: format
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: "${{ github.event.pull_request.head.sha }}"
       - name: Install libpq-dev and clang-18 (Linux)
@@ -70,7 +70,7 @@ jobs:
     needs: clippy
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: "${{ github.event.pull_request.head.sha }}"
       - name: Install libpq-dev and clang-18 (Linux)
@@ -92,7 +92,7 @@ jobs:
     needs: test
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: "${{ github.event.pull_request.head.sha }}"
       - name: Install libpq-dev and clang-18 (Linux)
