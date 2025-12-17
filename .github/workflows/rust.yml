@@ -19,7 +19,7 @@ env:
 
 jobs:
   format:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
         run: cargo fmt --all --check
 
   clippy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     name: clippy
     needs: format
     steps:
@@ -66,7 +66,7 @@ jobs:
         run: cargo clippy --target x86_64-unknown-linux-gnu
 
   test:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: clippy
     steps:
       - name: Checkout code
@@ -87,8 +87,8 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
 
-  build:
-    runs-on: self-hosted
+  build:    
+    runs-on: ubuntu-latest
     needs: test
     steps:
       - name: Checkout code
