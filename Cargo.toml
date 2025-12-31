@@ -28,7 +28,7 @@ derive_more = { version = "1.0.0", features = ["full"] }
 strum = { version = "0.26.3", features = ["derive"] }
 strum_macros = "0.26.4"
 
-itertools = "0.13.0"
+itertools = "0.14.0"
 rustls = "0.23.19"
 awc = { version = "3.5.1", features = ["rustls-0_23"] }
 webpki-roots = "0.26.7"
