@@ -25,8 +25,8 @@ env_logger = "0.11.5"
 envy = "0.4.2"
 log = "0.4.17"
 derive_more = { version = "1.0.0", features = ["full"] }
-strum = { version = "0.26.3", features = ["derive"] }
-strum_macros = "0.26.4"
+strum = { version = "0.27.0", features = ["derive"] }
+strum_macros = "0.27.0"
 
 itertools = "0.13.0"
 rustls = "0.23.19"
